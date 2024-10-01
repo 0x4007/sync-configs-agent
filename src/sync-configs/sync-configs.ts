@@ -5,9 +5,9 @@ import * as path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
 import { getDefaultBranch } from "./get-default-branch";
 import { getDiff } from "./get-diff";
+import { renderPrompt } from "./render-prompt";
 import { repositories } from "./repositories";
 
-export const CONFIG_FILE_PATH = ".github/.ubiquibot-config.yml";
 const REPOS_DIR = "../organizations";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -120,12 +120,14 @@ export async function syncConfigs() {
 }
 
 async function getModifiedContent(originalContent: string, instruction: string): Promise<string> {
-  const prompt = `Here is a YAML configuration file:\n\n---\n${originalContent}\n---\n\nModify this file according to the following instruction:\n\n"${instruction}"\n\nProvide the modified YAML file without any additional explanation.`;
+  const prompt = renderPrompt(originalContent, instruction);
+
+  // console.trace(prompt)
 
   const response = await axios.post(
     "https://api.openai.com/v1/chat/completions",
     {
-      model: "gpt-4",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -133,14 +135,40 @@ async function getModifiedContent(originalContent: string, instruction: string):
         },
         { role: "user", content: prompt },
       ],
+      stream: true,
     },
     {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
+      responseType: "stream",
     }
   );
 
-  return response.data.choices[0].message.content.trim();
+  let fullContent = "";
+  for await (const chunk of response.data) {
+    const lines = chunk
+      .toString()
+      .split("\n")
+      .filter((line) => line.trim() !== "");
+    for (const line of lines) {
+      const message = line.replace(/^data: /, "");
+      if (message === "[DONE]") {
+        return fullContent.trim();
+      }
+      try {
+        const parsed = JSON.parse(message);
+        const content = parsed.choices[0].delta.content;
+        if (content) {
+          fullContent += content;
+          process.stdout.write(content);
+        }
+      } catch (error) {
+        console.error("Error parsing stream:", error);
+      }
+    }
+  }
+
+  return fullContent.trim();
 }

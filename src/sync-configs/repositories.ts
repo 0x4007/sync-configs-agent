@@ -1,4 +1,4 @@
-import { CONFIG_FILE_PATH } from "./sync-configs";
+const CONFIG_FILE_PATH = ".github/.ubiquibot-config.yml";
 
 export const repositories = [
   {
