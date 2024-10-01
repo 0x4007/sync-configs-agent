@@ -1,3 +1,4 @@
+import { Octokit } from "@octokit/rest";
 import * as fs from "fs";
 import inquirer from "inquirer";
 import * as path from "path";
@@ -22,14 +23,20 @@ export async function syncConfigs() {
     return cloneOrPullRepo(repo, defaultBranch);
   });
 
-  // Get user input while repositories are being cloned/pulled
-  const { instruction } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "instruction",
-      message: "Enter the changes you want to make (in plain English):",
-    },
-  ]);
+  let instruction: string;
+  if (process.env.NON_INTERACTIVE === "true") {
+    instruction = process.env.INPUT_STRING || "";
+  } else {
+    // Get user input while repositories are being cloned/pulled
+    const response = await inquirer.prompt([
+      {
+        type: "input",
+        name: "instruction",
+        message: "Enter the changes you want to make (in plain English):",
+      },
+    ]);
+    instruction = response.instruction;
+  }
 
   // Wait for all clone/pull operations to complete
   await Promise.all(clonePromises);
@@ -71,29 +78,63 @@ export async function syncConfigs() {
     const diff = await getDiff(filePath, tempFilePath);
     console.log(diff);
 
-    // Prompt the user to confirm
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Do you want to apply these changes to ${repo.url}?`,
-      },
-    ]);
+    let isConfirmed: boolean;
+    if (process.env.NON_INTERACTIVE === "true") {
+      isConfirmed = true;
+    } else {
+      // Prompt the user to confirm
+      const response = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirm",
+          message: `Do you want to apply these changes to ${repo.url}?`,
+        },
+      ]);
+      isConfirmed = response.confirm;
+    }
 
-    if (confirm) {
+    if (isConfirmed) {
       // Replace the original file with the modified content
       fs.writeFileSync(filePath, modifiedContent, "utf8");
 
       // Commit and push the changes
       const git: SimpleGit = simpleGit(path.join(__dirname, REPOS_DIR, repo.localDir));
       const defaultBranch = await getDefaultBranch(repo.url);
+      const branchName = `sync-configs-${Date.now()}`;
+      await git.checkoutLocalBranch(branchName);
       await git.add(repo.filePath);
       await git.commit(`chore: update using @ubiquity/sync-configs
 
 ${instruction}
 `);
-      await git.push("origin", defaultBranch);
-      console.log(`Changes pushed to ${repo.url}`);
+
+      if (process.env.NON_INTERACTIVE === "true") {
+        await git.push("origin", branchName);
+        console.log(`Changes pushed to ${repo.url} in branch ${branchName}`);
+
+        // Create pull request
+        const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+        const [owner, repoName] = repo.url.split("/").slice(-2);
+
+        try {
+          const { data: pullRequest } = await octokit.pulls.create({
+            owner,
+            repo: repoName,
+            title: `Sync configs: ${instruction}`,
+            head: branchName,
+            base: defaultBranch,
+            body: `This pull request was automatically created by the sync-configs tool.\n\nInstruction: ${instruction}`,
+          });
+
+          console.log(`Pull request created: ${pullRequest.html_url}`);
+        } catch (error) {
+          console.error(`Failed to create pull request: ${error.message}`);
+        }
+      } else {
+        await git.push("origin", defaultBranch);
+        console.log(`Changes pushed to ${repo.url}`);
+      }
     } else {
       console.log(`Changes to ${repo.url} discarded.`);
     }
