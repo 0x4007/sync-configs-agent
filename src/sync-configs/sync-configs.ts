@@ -2,56 +2,13 @@ import * as fs from "fs";
 import inquirer from "inquirer";
 import * as path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
+import { cloneOrPullRepo } from "./clone-or-pull-repo";
 import { getDefaultBranch } from "./get-default-branch";
 import { getDiff } from "./get-diff";
-import { renderPrompt } from "./render-prompt";
+import { getModifiedContent } from "./get-modified-content";
 import { repositories } from "./repositories";
 
-const REPOS_DIR = "../organizations";
-
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-if (!ANTHROPIC_API_KEY) {
-  console.error("Error: ANTHROPIC_API_KEY environment variable is not set.");
-  process.exit(1);
-}
-
-function cloneOrPullRepo(repo: { url: string; localDir: string }, defaultBranch: string): Promise<void> {
-  const repoDir = path.resolve(__dirname, REPOS_DIR, repo.localDir);
-  const git: SimpleGit = simpleGit();
-
-  return new Promise((resolve, reject) => {
-    if (fs.existsSync(repoDir)) {
-      // Repo already cloned, do git pull
-      // console.log(`Pulling latest changes for ${repo.url}`);
-      git
-        .cwd(repoDir)
-        .then(() => Promise.all([git.checkout(defaultBranch), git.pull("origin", defaultBranch)]))
-        .then(() => resolve())
-        .catch(reject);
-    } else {
-      // Clone the repo
-      console.log(`Cloning ${repo.url}`);
-      git
-        .clone(repo.url, repoDir)
-        .then(() => git.cwd(repoDir))
-        .then(() => git.checkout(defaultBranch))
-        .then(() => resolve())
-        .catch((error) => {
-          if (error instanceof Error && error.message.includes("destination path already exists")) {
-            console.log(`The directory ${repo.localDir} already exists. Pulling instead.`);
-            git
-              .cwd(repoDir)
-              .then(() => Promise.all([git.checkout(defaultBranch), git.pull("origin", defaultBranch)]))
-              .then(() => resolve())
-              .catch(reject);
-          } else {
-            reject(error);
-          }
-        });
-    }
-  });
-}
+export const REPOS_DIR = "../organizations";
 
 export async function syncConfigs() {
   // Ensure the repos directory exists
@@ -144,41 +101,4 @@ ${instruction}
     // Clean up temporary file
     fs.unlinkSync(tempFilePath);
   }
-}
-
-import Anthropic from "@anthropic-ai/sdk";
-
-async function getModifiedContent(originalContent: string, instruction: string, parserCode: string): Promise<string> {
-  const prompt = renderPrompt(originalContent, instruction, parserCode);
-
-  const anthropic = new Anthropic({
-    apiKey: ANTHROPIC_API_KEY,
-  });
-
-  const stream = await anthropic.messages.create({
-    model: "claude-3-5-sonnet-20240620",
-    max_tokens: 4000,
-    temperature: 0,
-    system: prompt,
-    messages: [
-      {
-        role: "user",
-        content: instruction,
-      },
-    ],
-    stream: true,
-  });
-
-  let fullContent = "";
-  for await (const chunk of stream) {
-    if (chunk.type === "content_block_delta") {
-      const content = chunk.delta.text;
-      if (content) {
-        fullContent += content;
-        process.stdout.write(content);
-      }
-    }
-  }
-
-  return fullContent.trim();
 }
