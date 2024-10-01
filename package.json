@@ -9,7 +9,7 @@
     "node": ">=20.10.0"
   },
   "scripts": {
-    "start": "tsx build/esbuild-server.ts",
+    "start": "tsx src/index.ts",
     "build": "tsx build/esbuild-build.ts",
     "format": "run-s format:lint format:prettier format:cspell",
     "format:lint": "eslint --fix .",

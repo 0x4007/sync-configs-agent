@@ -17,34 +17,41 @@ if (!OPENAI_API_KEY) {
   process.exit(1);
 }
 
-async function cloneOrPullRepo(repo: { url: string; localDir: string }, defaultBranch: string) {
+function cloneOrPullRepo(repo: { url: string; localDir: string }, defaultBranch: string): Promise<void> {
   const repoDir = path.resolve(__dirname, REPOS_DIR, repo.localDir);
   const git: SimpleGit = simpleGit();
 
-  if (fs.existsSync(repoDir)) {
-    // Repo already cloned, do git pull
-    console.log(`Pulling latest changes for ${repo.url}`);
-    await git.cwd(repoDir);
-    await git.checkout(defaultBranch);
-    await git.pull("origin", defaultBranch);
-  } else {
-    // Clone the repo
-    console.log(`Cloning ${repo.url}`);
-    try {
-      await git.clone(repo.url, repoDir);
-      await git.cwd(repoDir);
-      await git.checkout(defaultBranch);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("destination path already exists")) {
-        console.log(`The directory ${repo.localDir} already exists. Pulling instead.`);
-        await git.cwd(repoDir);
-        await git.checkout(defaultBranch);
-        await git.pull("origin", defaultBranch);
-      } else {
-        throw error;
-      }
+  return new Promise((resolve, reject) => {
+    if (fs.existsSync(repoDir)) {
+      // Repo already cloned, do git pull
+      console.log(`Pulling latest changes for ${repo.url}`);
+      git
+        .cwd(repoDir)
+        .then(() => Promise.all([git.checkout(defaultBranch), git.pull("origin", defaultBranch)]))
+        .then(() => resolve())
+        .catch(reject);
+    } else {
+      // Clone the repo
+      console.log(`Cloning ${repo.url}`);
+      git
+        .clone(repo.url, repoDir)
+        .then(() => git.cwd(repoDir))
+        .then(() => git.checkout(defaultBranch))
+        .then(() => resolve())
+        .catch((error) => {
+          if (error instanceof Error && error.message.includes("destination path already exists")) {
+            console.log(`The directory ${repo.localDir} already exists. Pulling instead.`);
+            git
+              .cwd(repoDir)
+              .then(() => Promise.all([git.checkout(defaultBranch), git.pull("origin", defaultBranch)]))
+              .then(() => resolve())
+              .catch(reject);
+          } else {
+            reject(error);
+          }
+        });
     }
-  }
+  });
 }
 
 export async function syncConfigs() {
@@ -57,7 +64,7 @@ export async function syncConfigs() {
   // Clone or pull the repositories
   for (const repo of repositories) {
     const defaultBranch = await getDefaultBranch(repo.url);
-    await cloneOrPullRepo(repo, defaultBranch);
+    void cloneOrPullRepo(repo, defaultBranch);
   }
 
   // Get user input
@@ -154,7 +161,7 @@ async function getModifiedContent(originalContent: string, instruction: string):
     const lines = chunk
       .toString()
       .split("\n")
-      .filter((line) => line.trim() !== "");
+      .filter((line: string) => line.trim() !== "");
     for (const line of lines) {
       const message = line.replace(/^data: /, "");
       if (message === "[DONE]") {
