@@ -1,4 +1,3 @@
-import axios from "axios";
 import * as fs from "fs";
 import inquirer from "inquirer";
 import * as path from "path";
@@ -10,10 +9,10 @@ import { repositories } from "./repositories";
 
 const REPOS_DIR = "../organizations";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-if (!OPENAI_API_KEY) {
-  console.error("Error: OPENAI_API_KEY environment variable is not set.");
+if (!ANTHROPIC_API_KEY) {
+  console.error("Error: ANTHROPIC_API_KEY environment variable is not set.");
   process.exit(1);
 }
 
@@ -24,7 +23,7 @@ function cloneOrPullRepo(repo: { url: string; localDir: string }, defaultBranch:
   return new Promise((resolve, reject) => {
     if (fs.existsSync(repoDir)) {
       // Repo already cloned, do git pull
-      console.log(`Pulling latest changes for ${repo.url}`);
+      // console.log(`Pulling latest changes for ${repo.url}`);
       git
         .cwd(repoDir)
         .then(() => Promise.all([git.checkout(defaultBranch), git.pull("origin", defaultBranch)]))
@@ -60,14 +59,13 @@ export async function syncConfigs() {
   if (!fs.existsSync(reposPath)) {
     fs.mkdirSync(reposPath, { recursive: true });
   }
-
-  // Clone or pull the repositories
-  for (const repo of repositories) {
+  // Start cloning or pulling repositories in the background
+  const clonePromises = repositories.map(async (repo) => {
     const defaultBranch = await getDefaultBranch(repo.url);
-    void cloneOrPullRepo(repo, defaultBranch);
-  }
+    return cloneOrPullRepo(repo, defaultBranch);
+  });
 
-  // Get user input
+  // Get user input while repositories are being cloned/pulled
   const { instruction } = await inquirer.prompt([
     {
       type: "input",
@@ -75,6 +73,25 @@ export async function syncConfigs() {
       message: "Enter the changes you want to make (in plain English):",
     },
   ]);
+
+  // Wait for all clone/pull operations to complete
+  await Promise.all(clonePromises);
+
+  // Find and remove the parser repository from the array
+  const parserRepoIndex = repositories.findIndex((repo) => repo.type === "parser");
+  if (parserRepoIndex === -1) {
+    console.error("Parser repository not found. Unable to proceed.");
+    return;
+  }
+  const [parserRepo] = repositories.splice(parserRepoIndex, 1);
+
+  // Read the parser file content
+  const parserFilePath = path.join(__dirname, REPOS_DIR, parserRepo.localDir, parserRepo.filePath);
+  if (!fs.existsSync(parserFilePath)) {
+    console.error(`Parser file ${parserFilePath} does not exist. Unable to proceed.`);
+    return;
+  }
+  const parserCode = fs.readFileSync(parserFilePath, "utf8");
 
   // Process each file
   for (const repo of repositories) {
@@ -86,7 +103,7 @@ export async function syncConfigs() {
     const fileContent = fs.readFileSync(filePath, "utf8");
 
     // Use OpenAI API to get the modified content
-    const modifiedContent = await getModifiedContent(fileContent, instruction);
+    const modifiedContent = await getModifiedContent(fileContent, instruction, parserCode);
 
     // Save the modified content to a temporary file
     const tempFilePath = `${filePath}.modified`;
@@ -129,53 +146,36 @@ ${instruction}
   }
 }
 
-async function getModifiedContent(originalContent: string, instruction: string): Promise<string> {
-  const prompt = renderPrompt(originalContent, instruction);
+import Anthropic from "@anthropic-ai/sdk";
 
-  // console.trace(prompt)
+async function getModifiedContent(originalContent: string, instruction: string, parserCode: string): Promise<string> {
+  const prompt = renderPrompt(originalContent, instruction, parserCode);
 
-  const response = await axios.post(
-    "https://api.openai.com/v1/chat/completions",
-    {
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are an assistant that modifies YAML configuration files based on instructions.",
-        },
-        { role: "user", content: prompt },
-      ],
-      stream: true,
-    },
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+  const anthropic = new Anthropic({
+    apiKey: ANTHROPIC_API_KEY,
+  });
+
+  const stream = await anthropic.messages.create({
+    model: "claude-3-5-sonnet-20240620",
+    max_tokens: 4000,
+    temperature: 0,
+    system: prompt,
+    messages: [
+      {
+        role: "user",
+        content: instruction,
       },
-      responseType: "stream",
-    }
-  );
+    ],
+    stream: true,
+  });
 
   let fullContent = "";
-  for await (const chunk of response.data) {
-    const lines = chunk
-      .toString()
-      .split("\n")
-      .filter((line: string) => line.trim() !== "");
-    for (const line of lines) {
-      const message = line.replace(/^data: /, "");
-      if (message === "[DONE]") {
-        return fullContent.trim();
-      }
-      try {
-        const parsed = JSON.parse(message);
-        const content = parsed.choices[0].delta.content;
-        if (content) {
-          fullContent += content;
-          process.stdout.write(content);
-        }
-      } catch (error) {
-        console.error("Error parsing stream:", error);
+  for await (const chunk of stream) {
+    if (chunk.type === "content_block_delta") {
+      const content = chunk.delta.text;
+      if (content) {
+        fullContent += content;
+        process.stdout.write(content);
       }
     }
   }
