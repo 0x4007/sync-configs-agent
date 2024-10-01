@@ -21,7 +21,7 @@ jobs:
           node-version: "20.10.0"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run npm start
         run: npm start "${{ github.event.inputs.input_string }}"

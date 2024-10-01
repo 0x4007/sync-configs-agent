@@ -18,7 +18,7 @@ jobs:
           node-version: "20.10.0"
 
       - name: Install
-        run: npm install
+        run: npm ci
 
       - name: Run cspell
         run: npm run format:cspell
