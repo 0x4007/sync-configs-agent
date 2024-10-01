@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       input_string:
-        description: 'Input string to pass to the program'
+        description: "Input string to pass to the program"
         required: true
         type: string
 
@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.10.0'
+          node-version: "20.10.0"
 
       - name: Install dependencies
         run: npm install
@@ -27,4 +27,4 @@ jobs:
         run: npm start "${{ github.event.inputs.input_string }}"
         env:
           INPUT_STRING: ${{ github.event.inputs.input_string }}
-          NON_INTERACTIVE: 'true'
+          NON_INTERACTIVE: "true"
