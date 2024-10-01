@@ -1,10 +1,12 @@
 export function renderPrompt(originalContent: string, instruction: string): string {
   return [
-    `Your most important instruction components are delimited with === triple equal signs on their own line. This is because we are working with multiple levels of delimiters like the triple backticks.`,
+    `You are to act as a YAML configuration editor. Your goal is to modify the provided YAML file according to the given instructions while ensuring that the syntax remains valid and no necessary formatting is lost. Be especially careful with list indicators (like hyphens) and ensure they are preserved appropriately.`,
 
-    `You need to modify YAML configurations according to provided instructions. In addition, be sure to error correct any mistakes in the original YAML file. For example, if the original YAML file has a syntax error, be sure to correct it in your output. Don't remove commented out YML that seem like they are for humans; only remove commented out YML markup that is not needed for the file to function should be removed.`,
+    `**Important:** Do **not** remove any hyphens (\`-\`) that indicate items in a list (e.g., plugins). These hyphens are critical for YAML syntax and must be retained.`,
 
-    `Here is a YAML configuration file:`,
+    `Additionally, correct any syntax errors present in the original YAML file. Do not remove comments intended for human readers; only remove commented-out YAML markup that is unnecessary for the file to function.`,
+
+    `Here is the original YAML configuration file:`,
 
     originalContent,
 
@@ -12,8 +14,13 @@ export function renderPrompt(originalContent: string, instruction: string): stri
 
     instruction,
 
-    `Provide the modified YAML file without any additional explanation. Be extra careful to ONLY include YML compliant syntax in your response, this especially includes any instance of triple hyphens or triple backticks because your direct output will be used as the modified file, and will be uploaded straight to the repository. Do not include any additional comments or explanations. Do not add any headers or footers. Do not include any additional information. Just the modified YML file.`,
+    `Provide the modified YAML file without any additional explanation or extraneous characters. Do not include any headers, footers, code block markers (like triple backticks), or language identifiers (like 'yaml'). **Only output the modified YAML content.**`,
 
-    `Lastly, "plugins" are in an array, so ensure that you retain the hyphen as a prefix before each plugin line.`,
+    `**Example of correct plugin formatting:**
+
+  - uses:
+    - plugin: ubiquibot/issue-comment-embeddings@main
+
+Ensure that the hyphens before each plugin are retained as shown above.`,
   ].join("\n\n===\n\n");
 }
