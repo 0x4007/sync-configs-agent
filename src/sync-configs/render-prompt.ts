@@ -7,7 +7,7 @@ export function renderPrompt(originalContent: string, instruction: string, parse
     - Be especially careful with list indicators (like hyphens) and ensure they are preserved appropriately.
     - **Important:** Do **not** remove any hyphens (\`-\`) that indicate items in a list (e.g., plugins). These hyphens are critical for YAML syntax and must be retained.
     - Additionally, correct any syntax errors present in the original YAML file.
-    - Do not remove comments intended for human readers; only remove commented-out YAML markup that is unnecessary for the file to function.
+
     - **Do not alter any URLs in the configuration file. Assume that all URLs provided are correct and must remain unchanged.**
     - Here is the original YAML configuration file:`,
 
@@ -20,7 +20,7 @@ export function renderPrompt(originalContent: string, instruction: string, parse
 - uses:
   - plugin: ubiquibot/issue-comment-embeddings@main
 
-Ensure that the hyphens before each plugin are retained as shown above. **Remember, do not change any URLs in the configuration.** Finally, for additional context, here is the source code of the yml configuration parser for your reference:`,
+Ensure that the hyphens before each plugin are retained as shown above. **Remember, do not change any URLs in the configuration.** and do not remove comments intended for human readers; only remove commented-out YAML code. Finally, for additional context, here is the source code of the yml configuration parser for your reference:`,
 
     parserCode,
   ].join("\n\n===\n\n");
