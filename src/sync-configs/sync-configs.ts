@@ -107,7 +107,10 @@ export async function syncConfigs() {
       const git: SimpleGit = simpleGit(path.join(__dirname, REPOS_DIR, repo.localDir));
       const defaultBranch = await getDefaultBranch(repo.url);
       await git.add(repo.filePath);
-      await git.commit(`Update ${repo.filePath} via script`);
+      await git.commit(`chore: update using @ubiquity/sync-configs
+
+${instruction}
+`);
       await git.push("origin", defaultBranch);
       console.log(`Changes pushed to ${repo.url}`);
     } else {
