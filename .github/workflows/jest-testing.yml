@@ -20,7 +20,9 @@ jobs:
           fetch-depth: 0
 
       - name: Jest With Coverage
-        run: yarn install --immutable --immutable-cache --check-cache && yarn test
+        run: |
+          bun install
+          bun run test
 
       - name: Add Jest Report to Summary
         if: always()

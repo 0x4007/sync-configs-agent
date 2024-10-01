@@ -23,8 +23,8 @@ jobs:
 
       - name: Build
         run: |
-          yarn
-          yarn build
+          bun install
+          bun run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
