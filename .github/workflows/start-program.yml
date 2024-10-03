@@ -26,5 +26,6 @@ jobs:
       - name: Run npm start
         run: npm start "${{ github.event.inputs.input_string }}"
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           INPUT_STRING: ${{ github.event.inputs.input_string }}
           NON_INTERACTIVE: "true"
