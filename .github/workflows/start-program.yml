@@ -29,4 +29,4 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           INPUT_STRING: ${{ github.event.inputs.input_string }}
           NON_INTERACTIVE: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}
