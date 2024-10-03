@@ -3,7 +3,6 @@ import inquirer from "inquirer";
 import * as path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
 import { cloneOrPullRepo } from "./clone-or-pull-repo";
-import { createPullRequest } from "./create-pull-request";
 import { getDefaultBranch } from "./get-default-branch";
 import { getDiff } from "./get-diff";
 import { getModifiedContent } from "./get-modified-content";
@@ -52,7 +51,8 @@ async function pushModifiedContents() {
 
     if (fs.existsSync(modifiedFilePath)) {
       const modifiedContent = fs.readFileSync(modifiedFilePath, "utf8");
-      await applyChanges(repo, filePath, modifiedContent, "Pushing modified contents", true);
+      const defaultBranch = await getDefaultBranch(repo.url);
+      await applyChanges(repo, filePath, modifiedContent, "Rerunning using `--push` flag. Original prompt has not been retained.", true, defaultBranch);
     } else {
       console.log(`No modified file found for ${repo.url}. Skipping.`);
     }
@@ -136,7 +136,7 @@ async function confirmChanges(repoUrl: string): Promise<boolean> {
   return response.confirm;
 }
 
-async function applyChanges(repo: Repo, filePath: string, modifiedContent: string, instruction: string, isNonInteractive: boolean) {
+async function applyChanges(repo: Repo, filePath: string, modifiedContent: string, instruction: string, isNonInteractive: boolean, forceBranch?: string) {
   fs.writeFileSync(filePath, modifiedContent, "utf8");
 
   const git: SimpleGit = simpleGit({
@@ -151,38 +151,28 @@ async function applyChanges(repo: Repo, filePath: string, modifiedContent: strin
     stderr.pipe(process.stderr);
   });
 
-  const defaultBranch = await getDefaultBranch(repo.url);
+  const defaultBranch = forceBranch || (await getDefaultBranch(repo.url));
   console.log(`Default branch for ${repo.url} is ${defaultBranch}`);
 
-  if (isNonInteractive) {
-    // In non-interactive mode, create a new branch for the PR
-    const branchName = `sync-configs-${Date.now()}`;
-    await git.checkoutLocalBranch(branchName);
-  } else {
-    // In interactive mode, check out the default branch
-    await git.checkout(defaultBranch);
-    await git.pull("origin", defaultBranch);
-  }
+  // Always checkout the default branch
+  await git.checkout(defaultBranch);
+  await git.pull("origin", defaultBranch);
 
   await git.add(repo.filePath);
 
   const status = await git.status();
   console.log(`Git status before commit:`, status);
 
-  await git.commit(`chore: update using UbiquityOS Configurations Agent
+  await git.commit(
+    `chore: update using UbiquityOS Configurations Agent
 
 ${instruction}
-  `);
+    `
+  );
 
   try {
-    if (isNonInteractive) {
-      await git.push("origin", branchName);
-      console.log(`Changes pushed to ${repo.url} in branch ${branchName}`);
-      await createPullRequest(repo, branchName, defaultBranch, instruction);
-    } else {
-      await git.push("origin", defaultBranch);
-      console.log(`Changes pushed to ${repo.url}`);
-    }
+    await git.push("origin", defaultBranch);
+    console.log(`Changes pushed directly to ${repo.url} in branch ${defaultBranch}`);
   } catch (error) {
     console.error(`Error applying changes to ${repo.url}:`, error);
   }
