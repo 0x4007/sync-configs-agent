@@ -9,7 +9,7 @@ if (!ANTHROPIC_API_KEY) {
 }
 
 export async function getModifiedContent(originalContent: string, instruction: string, parserCode: string): Promise<string> {
-  const prompt = renderPrompt(originalContent, instruction, parserCode);
+  const prompt = renderPrompt(originalContent, parserCode);
 
   const anthropic = new Anthropic({
     apiKey: ANTHROPIC_API_KEY,

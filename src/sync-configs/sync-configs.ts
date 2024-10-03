@@ -7,34 +7,76 @@ import { getDefaultBranch } from "./get-default-branch";
 import { getDiff } from "./get-diff";
 import { getModifiedContent } from "./get-modified-content";
 import { repositories } from "./repositories";
+import { createPullRequest } from "./create-pull-request";
+
+export type Repo = (typeof repositories)[number];
 
 export const REPOS_DIR = "../organizations";
 
-export async function syncConfigs() {
-  // Ensure the repos directory exists
+export async function syncConfigsAgent() {
+  const args = process.argv.slice(2);
+  const shouldPush = args.includes("--push");
+
+  if (shouldPush) {
+    await pushModifiedContents();
+    return;
+  }
+
   const reposPath = path.resolve(__dirname, REPOS_DIR);
   if (!fs.existsSync(reposPath)) {
     fs.mkdirSync(reposPath, { recursive: true });
   }
-  // Start cloning or pulling repositories in the background
+
   const clonePromises = repositories.map(async (repo) => {
     const defaultBranch = await getDefaultBranch(repo.url);
     return cloneOrPullRepo(repo, defaultBranch);
   });
 
-  // Get user input while repositories are being cloned/pulled
-  const { instruction } = await inquirer.prompt([
+  await Promise.all(clonePromises);
+
+  if (process.env.NON_INTERACTIVE === "true") {
+    await syncConfigsNonInteractive();
+  } else {
+    await syncConfigsInteractive();
+  }
+}
+
+async function pushModifiedContents() {
+  for (const repo of repositories) {
+    if (repo.type === "parser") {
+      console.log(`Skipping parser repository ${repo.url}`);
+      continue;
+    }
+    const filePath = path.join(__dirname, REPOS_DIR, repo.localDir, repo.filePath);
+    const modifiedFilePath = `${filePath}.modified`;
+
+    if (fs.existsSync(modifiedFilePath)) {
+      const modifiedContent = fs.readFileSync(modifiedFilePath, "utf8");
+      const defaultBranch = await getDefaultBranch(repo.url);
+      await applyChanges(repo, filePath, modifiedContent, "Rerunning using `--push` flag. Original prompt has not been retained.", true, defaultBranch);
+    } else {
+      console.log(`No modified file found for ${repo.url}. Skipping.`);
+    }
+  }
+}
+
+async function syncConfigsNonInteractive() {
+  const instruction = process.env.INPUT_STRING || "";
+  await processRepositories(instruction, true);
+}
+
+async function syncConfigsInteractive() {
+  const response = await inquirer.prompt([
     {
       type: "input",
       name: "instruction",
       message: "Enter the changes you want to make (in plain English):",
     },
   ]);
+  await processRepositories(response.instruction, false);
+}
 
-  // Wait for all clone/pull operations to complete
-  await Promise.all(clonePromises);
-
-  // Find and remove the parser repository from the array
+async function processRepositories(instruction: string, isNonInteractive: boolean) {
   const parserRepoIndex = repositories.findIndex((repo) => repo.type === "parser");
   if (parserRepoIndex === -1) {
     console.error("Parser repository not found. Unable to proceed.");
@@ -42,7 +84,6 @@ export async function syncConfigs() {
   }
   const [parserRepo] = repositories.splice(parserRepoIndex, 1);
 
-  // Read the parser file content
   const parserFilePath = path.join(__dirname, REPOS_DIR, parserRepo.localDir, parserRepo.filePath);
   if (!fs.existsSync(parserFilePath)) {
     console.error(`Parser file ${parserFilePath} does not exist. Unable to proceed.`);
@@ -50,55 +91,99 @@ export async function syncConfigs() {
   }
   const parserCode = fs.readFileSync(parserFilePath, "utf8");
 
-  // Process each file
   for (const repo of repositories) {
-    const filePath = path.join(__dirname, REPOS_DIR, repo.localDir, repo.filePath);
-    if (!fs.existsSync(filePath)) {
-      console.log(`Skipping ${repo.url} as the file ${repo.filePath} does not exist.`);
-      continue;
+    if (repo.type !== "parser") {
+      await processRepository(repo, instruction, parserCode, isNonInteractive);
     }
-    const fileContent = fs.readFileSync(filePath, "utf8");
+  }
+}
 
-    // Use OpenAI API to get the modified content
-    const modifiedContent = await getModifiedContent(fileContent, instruction, parserCode);
+async function processRepository(repo: Repo, instruction: string, parserCode: string, isNonInteractive: boolean) {
+  const filePath = path.join(__dirname, REPOS_DIR, repo.localDir, repo.filePath);
+  if (!fs.existsSync(filePath)) {
+    console.log(`Skipping ${repo.url} as the file ${repo.filePath} does not exist.`);
+    return;
+  }
+  const fileContent = fs.readFileSync(filePath, "utf8");
 
-    // Save the modified content to a temporary file
-    const tempFilePath = `${filePath}.modified`;
-    fs.writeFileSync(tempFilePath, modifiedContent, "utf8");
+  const modifiedContent = await getModifiedContent(fileContent, instruction, parserCode);
 
-    // Show the differences
-    console.log(`\nDifferences for ${filePath}:`);
-    const diff = await getDiff(filePath, tempFilePath);
-    console.log(diff);
+  const tempFilePath = `${filePath}.modified`;
+  fs.writeFileSync(tempFilePath, modifiedContent, "utf8");
 
-    // Prompt the user to confirm
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: `Do you want to apply these changes to ${repo.url}?`,
-      },
-    ]);
+  console.log(`\nDifferences for ${filePath}:`);
+  const diff = await getDiff(filePath, tempFilePath);
+  console.log(diff);
 
-    if (confirm) {
-      // Replace the original file with the modified content
-      fs.writeFileSync(filePath, modifiedContent, "utf8");
+  const isConfirmed = isNonInteractive || (await confirmChanges(repo.url));
 
-      // Commit and push the changes
-      const git: SimpleGit = simpleGit(path.join(__dirname, REPOS_DIR, repo.localDir));
-      const defaultBranch = await getDefaultBranch(repo.url);
-      await git.add(repo.filePath);
-      await git.commit(`chore: update using @ubiquity/sync-configs
+  if (isConfirmed) {
+    await applyChanges(repo, filePath, modifiedContent, instruction, isNonInteractive);
+  } else {
+    console.log(`Changes to ${repo.url} discarded.`);
+  }
+
+  // fs.unlinkSync(tempFilePath);
+}
+
+async function confirmChanges(repoUrl: string): Promise<boolean> {
+  const response = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "confirm",
+      message: `Do you want to apply these changes to ${repoUrl}?`,
+    },
+  ]);
+  return response.confirm;
+}
+
+async function applyChanges(repo: Repo, filePath: string, modifiedContent: string, instruction: string, isNonInteractive: boolean, forceBranch?: string) {
+  fs.writeFileSync(filePath, modifiedContent, "utf8");
+
+  const git: SimpleGit = simpleGit({
+    baseDir: path.join(__dirname, REPOS_DIR, repo.localDir),
+    binary: "git",
+    maxConcurrentProcesses: 6,
+    trimmed: false,
+  });
+
+  git.outputHandler((command, stdout, stderr) => {
+    stdout.pipe(process.stdout);
+    stderr.pipe(process.stderr);
+  });
+
+  const defaultBranch = forceBranch || (await getDefaultBranch(repo.url));
+  console.log(`Default branch for ${repo.url} is ${defaultBranch}`);
+
+  // Always checkout the default branch
+  await git.checkout(defaultBranch);
+  await git.pull("origin", defaultBranch);
+
+  const branchName = `sync-configs-${Date.now()}`;
+  await git.checkoutLocalBranch(branchName);
+
+  await git.add(repo.filePath);
+
+  const status = await git.status();
+  console.log(`Git status before commit:`, status);
+
+  await git.commit(
+    `chore: update using UbiquityOS Configurations Agent
 
 ${instruction}
-`);
-      await git.push("origin", defaultBranch);
-      console.log(`Changes pushed to ${repo.url}`);
-    } else {
-      console.log(`Changes to ${repo.url} discarded.`);
-    }
+    `
+  );
 
-    // Clean up temporary file
-    fs.unlinkSync(tempFilePath);
+  try {
+    if (isNonInteractive) {
+      await git.push("origin", branchName, ["--set-upstream"]);
+      await createPullRequest(repo, branchName, defaultBranch, instruction);
+      console.log(`Pull request created for ${repo.url} from branch ${branchName} to ${defaultBranch}`);
+    } else {
+      await git.push("origin", defaultBranch);
+      console.log(`Changes pushed directly to ${repo.url} in branch ${defaultBranch}`);
+    }
+  } catch (error) {
+    console.error(`Error applying changes to ${repo.url}:`, error);
   }
 }

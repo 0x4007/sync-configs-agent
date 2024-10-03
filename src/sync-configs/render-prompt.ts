@@ -1,4 +1,4 @@
-export function renderPrompt(originalContent: string, instruction: string, parserCode: string): string {
+export function renderPrompt(originalContent: string, parserCode: string): string {
   // eslint-disable-next-line sonarjs/prefer-immediate-return
   const prompt = [
     `
@@ -8,7 +8,7 @@ export function renderPrompt(originalContent: string, instruction: string, parse
     - **Important:** Do **not** remove any hyphens (\`-\`) that indicate items in a list (e.g., plugins). These hyphens are critical for YAML syntax and must be retained.
     - Additionally, correct any syntax errors present in the original YAML file.
 
-    - **Do not alter any URLs in the configuration file. Assume that all URLs provided are correct and must remain unchanged.**
+    - **Do not alter any URLs in the configuration file. Assume that all URLs provided are correct and must remain unchanged unless the user specifically requests a modification to URLs otherwise.**
     - Here is the original YAML configuration file:`,
 
     originalContent,

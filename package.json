@@ -1,12 +1,11 @@
 {
-  "name": "ts-template",
-  "version": "1.0.0",
-  "description": "Template repository with TypeScript support.",
-  "main": "build/index.ts",
+  "name": "sync-config-agent",
+  "version": "0.0.0",
+  "description": "Use plain english to change our organization configs for UbiquityOS across all Ubiquity organizations.",
   "author": "Ubiquity DAO",
   "license": "MIT",
   "engines": {
-    "node": ">=20.10.0"
+    "node": "20.10.0"
   },
   "scripts": {
     "start": "tsx src/index.ts",
@@ -18,9 +17,7 @@
     "knip": "knip --config .github/knip.ts",
     "knip-ci": "knip --no-exit-code --reporter json --config .github/knip.ts",
     "prepare": "husky install",
-    "test": "jest --setupFiles dotenv/config --coverage",
-    "cy:open": "cypress open",
-    "cy:run": "cypress run"
+    "test": "jest --setupFiles dotenv/config --coverage"
   },
   "keywords": [
     "typescript",
@@ -31,6 +28,7 @@
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
+    "@octokit/rest": "^21.0.2",
     "dotenv": "^16.4.4",
     "inquirer": "^11.1.0",
     "js-yaml": "^4.1.0",
@@ -49,7 +47,6 @@
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
     "cspell": "^8.4.0",
-    "cypress": "13.6.6",
     "esbuild": "^0.20.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",

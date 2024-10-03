@@ -1,4 +1,4 @@
-# `@ubiquity/sync-configs`
+# `UbiquityOS Configurations Agent`
 
 Use Claude 3.5 Sonnet to modify our three org configs using plain english!
 
