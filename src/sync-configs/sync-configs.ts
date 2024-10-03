@@ -7,6 +7,7 @@ import { getDefaultBranch } from "./get-default-branch";
 import { getDiff } from "./get-diff";
 import { getModifiedContent } from "./get-modified-content";
 import { repositories } from "./repositories";
+import { createPullRequest } from "./create-pull-request";
 
 export type Repo = (typeof repositories)[number];
 
@@ -158,6 +159,9 @@ async function applyChanges(repo: Repo, filePath: string, modifiedContent: strin
   await git.checkout(defaultBranch);
   await git.pull("origin", defaultBranch);
 
+  const branchName = `sync-configs-${Date.now()}`;
+  await git.checkoutLocalBranch(branchName);
+
   await git.add(repo.filePath);
 
   const status = await git.status();
@@ -171,8 +175,14 @@ ${instruction}
   );
 
   try {
-    await git.push("origin", defaultBranch);
-    console.log(`Changes pushed directly to ${repo.url} in branch ${defaultBranch}`);
+    if (isNonInteractive) {
+      await git.push("origin", branchName, ["--set-upstream"]);
+      await createPullRequest(repo, branchName, defaultBranch, instruction);
+      console.log(`Pull request created for ${repo.url} from branch ${branchName} to ${defaultBranch}`);
+    } else {
+      await git.push("origin", defaultBranch);
+      console.log(`Changes pushed directly to ${repo.url} in branch ${defaultBranch}`);
+    }
   } catch (error) {
     console.error(`Error applying changes to ${repo.url}:`, error);
   }
