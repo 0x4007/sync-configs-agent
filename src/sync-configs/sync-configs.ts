@@ -13,7 +13,15 @@ export type Repo = (typeof repositories)[number];
 
 export const REPOS_DIR = "../organizations";
 
-export async function syncConfigs() {
+export async function syncConfigsAgent() {
+  const args = process.argv.slice(2);
+  const shouldPush = args.includes("--push");
+
+  if (shouldPush) {
+    await pushModifiedContents();
+    return;
+  }
+
   const reposPath = path.resolve(__dirname, REPOS_DIR);
   if (!fs.existsSync(reposPath)) {
     fs.mkdirSync(reposPath, { recursive: true });
@@ -30,6 +38,24 @@ export async function syncConfigs() {
     await syncConfigsNonInteractive();
   } else {
     await syncConfigsInteractive();
+  }
+}
+
+async function pushModifiedContents() {
+  for (const repo of repositories) {
+    if (repo.type === "parser") {
+      console.log(`Skipping parser repository ${repo.url}`);
+      continue;
+    }
+    const filePath = path.join(__dirname, REPOS_DIR, repo.localDir, repo.filePath);
+    const modifiedFilePath = `${filePath}.modified`;
+
+    if (fs.existsSync(modifiedFilePath)) {
+      const modifiedContent = fs.readFileSync(modifiedFilePath, "utf8");
+      await applyChanges(repo, filePath, modifiedContent, "Pushing modified contents", true);
+    } else {
+      console.log(`No modified file found for ${repo.url}. Skipping.`);
+    }
   }
 }
 
@@ -65,7 +91,9 @@ async function processRepositories(instruction: string, isNonInteractive: boolea
   const parserCode = fs.readFileSync(parserFilePath, "utf8");
 
   for (const repo of repositories) {
-    await processRepository(repo, instruction, parserCode, isNonInteractive);
+    if (repo.type !== "parser") {
+      await processRepository(repo, instruction, parserCode, isNonInteractive);
+    }
   }
 }
 
@@ -94,7 +122,7 @@ async function processRepository(repo: Repo, instruction: string, parserCode: st
     console.log(`Changes to ${repo.url} discarded.`);
   }
 
-  fs.unlinkSync(tempFilePath);
+  // fs.unlinkSync(tempFilePath);
 }
 
 async function confirmChanges(repoUrl: string): Promise<boolean> {
@@ -111,22 +139,51 @@ async function confirmChanges(repoUrl: string): Promise<boolean> {
 async function applyChanges(repo: Repo, filePath: string, modifiedContent: string, instruction: string, isNonInteractive: boolean) {
   fs.writeFileSync(filePath, modifiedContent, "utf8");
 
-  const git: SimpleGit = simpleGit(path.join(__dirname, REPOS_DIR, repo.localDir));
-  const defaultBranch = await getDefaultBranch(repo.url);
-  const branchName = `sync-configs-${Date.now()}`;
-  await git.checkoutLocalBranch(branchName);
-  await git.add(repo.filePath);
-  await git.commit(`chore: update using @ubiquity/sync-configs
+  const git: SimpleGit = simpleGit({
+    baseDir: path.join(__dirname, REPOS_DIR, repo.localDir),
+    binary: "git",
+    maxConcurrentProcesses: 6,
+    trimmed: false,
+  });
 
-${instruction}
-`);
+  git.outputHandler((command, stdout, stderr) => {
+    stdout.pipe(process.stdout);
+    stderr.pipe(process.stderr);
+  });
+
+  const defaultBranch = await getDefaultBranch(repo.url);
+  console.log(`Default branch for ${repo.url} is ${defaultBranch}`);
 
   if (isNonInteractive) {
-    await git.push("origin", branchName);
-    console.log(`Changes pushed to ${repo.url} in branch ${branchName}`);
-    await createPullRequest(repo, branchName, defaultBranch, instruction);
+    // In non-interactive mode, create a new branch for the PR
+    const branchName = `sync-configs-${Date.now()}`;
+    await git.checkoutLocalBranch(branchName);
   } else {
-    await git.push("origin", defaultBranch);
-    console.log(`Changes pushed to ${repo.url}`);
+    // In interactive mode, check out the default branch
+    await git.checkout(defaultBranch);
+    await git.pull("origin", defaultBranch);
+  }
+
+  await git.add(repo.filePath);
+
+  const status = await git.status();
+  console.log(`Git status before commit:`, status);
+
+  await git.commit(`chore: update using UbiquityOS Configurations Agent
+
+${instruction}
+  `);
+
+  try {
+    if (isNonInteractive) {
+      await git.push("origin", branchName);
+      console.log(`Changes pushed to ${repo.url} in branch ${branchName}`);
+      await createPullRequest(repo, branchName, defaultBranch, instruction);
+    } else {
+      await git.push("origin", defaultBranch);
+      console.log(`Changes pushed to ${repo.url}`);
+    }
+  } catch (error) {
+    console.error(`Error applying changes to ${repo.url}:`, error);
   }
 }

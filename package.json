@@ -1,12 +1,11 @@
 {
-  "name": "ts-template",
-  "version": "1.0.0",
-  "description": "Template repository with TypeScript support.",
-  "main": "build/index.ts",
+  "name": "sync-config-agent",
+  "version": "0.0.0",
+  "description": "Use plain english to change our organization configs for UbiquityOS across all Ubiquity organizations.",
   "author": "Ubiquity DAO",
   "license": "MIT",
   "engines": {
-    "node": ">=20.10.0"
+    "node": "20.10.0"
   },
   "scripts": {
     "start": "tsx src/index.ts",
