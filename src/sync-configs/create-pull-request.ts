@@ -5,10 +5,12 @@ export async function createPullRequest(repo: Repo, branchName: string, defaultB
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
   const [owner, repoName] = repo.url.split("/").slice(-2);
 
+  const cleanRepoName = repoName.replace(/\.git$/, "");
+
   try {
     const { data: pullRequest } = await octokit.pulls.create({
       owner,
-      repo: repoName,
+      repo: cleanRepoName,
       title: `Sync configs: ${instruction}`,
       head: branchName,
       base: defaultBranch,
