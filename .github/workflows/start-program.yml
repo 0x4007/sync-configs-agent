@@ -9,24 +9,32 @@ on:
         type: string
 
 jobs:
-  run-npm-start:
+  run-start:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}
+          persist-credentials: true  # Ensure credentials are persisted for subsequent steps
+
+      - name: Configure Git to use PAT
+        run: |
+          git config --global url."https://${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}:@github.com/".insteadOf "https://github.com/"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20.10.0"
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        run: bun install
 
-      - name: Run npm start
-        run: npm start "${{ github.event.inputs.input_string }}"
+      - name: Run start script
+        run: bun start "${{ github.event.inputs.input_string }}"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           INPUT_STRING: ${{ github.event.inputs.input_string }}
-          NON_INTERACTIVE: true
+          NON_INTERACTIVE: "true"
           GITHUB_TOKEN: ${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}
