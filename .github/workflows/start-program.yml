@@ -14,13 +14,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}
-          persist-credentials: true  # Ensure credentials are persisted for subsequent steps
-
-      - name: Configure Git to use PAT
-        run: |
-          git config --global url."https://${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}:@github.com/".insteadOf "https://github.com/"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,12 +22,12 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: bun install
+        run: npm install
 
       - name: Run start script
-        run: bun start "${{ github.event.inputs.input_string }}"
+        run: npm start "${{ github.event.inputs.input_string }}"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           INPUT_STRING: ${{ github.event.inputs.input_string }}
-          NON_INTERACTIVE: "true"
+          INTERACTIVE: "true"
           GITHUB_TOKEN: ${{ secrets.UBIQUITY_OS_CONFIGURATION_AGENT_PAT }}

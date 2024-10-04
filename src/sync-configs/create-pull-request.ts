@@ -1,7 +1,17 @@
 import { Octokit } from "@octokit/rest";
 import { Repo } from "./sync-configs";
 
-export async function createPullRequest(repo: Repo, branchName: string, defaultBranch: string, instruction: string) {
+export async function createPullRequest({
+  repo,
+  branchName,
+  defaultBranch,
+  instruction,
+}: {
+  repo: Repo;
+  branchName: string;
+  defaultBranch: string;
+  instruction: string;
+}) {
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
   const [owner, repoName] = repo.url.split("/").slice(-2);
 
@@ -14,7 +24,10 @@ export async function createPullRequest(repo: Repo, branchName: string, defaultB
       title: `Sync configs: ${instruction}`,
       head: branchName,
       base: defaultBranch,
-      body: `This pull request was automatically created by the sync-configs tool.\n\nInstruction: ${instruction}`,
+      body: `> [!NOTE]
+> This pull request was automatically created by the @UbiquityOS Sync Configurations Agent.
+>
+> ${instruction}`,
     });
 
     console.log(`Pull request created: ${pullRequest.html_url}`);
