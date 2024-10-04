@@ -32,9 +32,9 @@ export async function syncConfigsAgent() {
 
   await Promise.all(clonePromises);
 
-  if (process.env.INTERACTIVE === "true") {
+  if (!process.env.INTERACTIVE || process.env.INTERACTIVE === "true") {
     await syncConfigsInteractive();
-  } else {
+  } else if (process.env.INTERACTIVE === "false") {
     await syncConfigsNonInteractive();
   }
 }

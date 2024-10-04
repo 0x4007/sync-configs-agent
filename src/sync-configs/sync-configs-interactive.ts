@@ -9,5 +9,5 @@ export async function syncConfigsInteractive() {
       message: "Enter the changes you want to make (in plain English):",
     },
   ]);
-  await processRepositories(response.instruction, false);
+  await processRepositories(response.instruction, true);
 }
