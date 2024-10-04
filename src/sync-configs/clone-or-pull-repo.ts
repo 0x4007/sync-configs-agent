@@ -8,7 +8,6 @@ export async function cloneOrPullRepo(repo: Repo, defaultBranch: string): Promis
   const git: SimpleGit = simpleGit(repoPath);
 
   if (await git.checkIsRepo()) {
-    console.log(`Updating ${repo.url}...`);
     try {
       await git.fetch("origin");
       await git.reset(["--hard", `origin/${defaultBranch}`]);
@@ -18,7 +17,6 @@ export async function cloneOrPullRepo(repo: Repo, defaultBranch: string): Promis
       throw error;
     }
   } else {
-    console.log(`Cloning ${repo.url}...`);
     try {
       await git.clone(repo.url, repoPath);
     } catch (error) {

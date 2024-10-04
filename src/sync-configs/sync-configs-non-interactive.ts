@@ -1,4 +1,4 @@
-import { processRepositories } from "./sync-configs";
+import { processRepositories } from "./process-repositories";
 
 export async function syncConfigsNonInteractive() {
   const args = process.argv.slice(2);

@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import path from "path";
 import { applyChanges } from "./apply-changes";
 import { getDefaultBranch } from "./get-default-branch";
@@ -7,8 +8,7 @@ import { REPOS_DIR } from "./sync-configs";
 export async function pushModifiedContents() {
   for (const repo of repositories) {
     if (repo.type === "parser") {
-      console.log(`Skipping parser repository ${repo.url}`);
-      continue;
+      continue; // no changes to parser
     }
     const filePath = path.join(__dirname, REPOS_DIR, repo.localDir, repo.filePath);
     const modifiedFilePath = `${filePath}.modified`;

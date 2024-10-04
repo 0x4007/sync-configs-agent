@@ -33,7 +33,6 @@ export async function applyChanges({
   });
 
   const defaultBranch = forceBranch || (await getDefaultBranch(repo.url));
-  console.log(`Default branch for ${repo.url} is ${defaultBranch}`);
 
   // Checkout and pull the default branch
   await git.checkout(defaultBranch);
@@ -47,9 +46,6 @@ export async function applyChanges({
   fs.writeFileSync(filePath, modifiedContent, "utf8");
 
   await git.add(repo.filePath);
-
-  // const status = await git.status();
-  // console.log(`Git status before commit:`, status);
 
   await git.commit(
     `chore: update using UbiquityOS Configurations Agent
