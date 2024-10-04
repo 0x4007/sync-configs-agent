@@ -4,7 +4,12 @@ import { repositories } from "./repositories";
 import { REPOS_DIR } from "./sync-configs";
 import * as fs from "fs";
 
+export const LAST_RUN_INSTRUCTION = "last-run-instruction.txt";
+
 export async function processRepositories(instruction: string, isInteractive: boolean) {
+  const instructionFilePath = path.join(__dirname, REPOS_DIR, LAST_RUN_INSTRUCTION);
+  fs.writeFileSync(instructionFilePath, instruction, "utf8");
+
   const parserRepoIndex = repositories.findIndex((repo) => repo.type === "parser");
   if (parserRepoIndex === -1) {
     console.error("Parser repository not found. Unable to proceed.");

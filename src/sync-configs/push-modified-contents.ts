@@ -2,6 +2,7 @@ import * as fs from "fs";
 import path from "path";
 import { applyChanges } from "./apply-changes";
 import { getDefaultBranch } from "./get-default-branch";
+import { LAST_RUN_INSTRUCTION } from "./process-repositories";
 import { repositories } from "./repositories";
 import { REPOS_DIR } from "./sync-configs";
 
@@ -20,7 +21,7 @@ export async function pushModifiedContents() {
         repo,
         filePath,
         modifiedContent,
-        instruction: "Rerunning using `--push` flag. Original prompt has not been retained.",
+        instruction: fs.readFileSync(path.join(__dirname, REPOS_DIR, [`Rerunning using \`--push\` flag.`, LAST_RUN_INSTRUCTION].join("\n\n")), "utf8"),
         isInteractive: false,
         forceBranch: defaultBranch,
       });

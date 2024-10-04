@@ -34,31 +34,22 @@ export async function applyChanges({
 
   const defaultBranch = forceBranch || (await getDefaultBranch(repo.url));
 
-  // Checkout and pull the default branch
   await git.checkout(defaultBranch);
   await git.pull("origin", defaultBranch);
 
-  // Create and checkout a new branch
-  const branchName = `sync-configs-${Date.now()}`;
-  await git.checkoutLocalBranch(branchName);
-
-  // Now apply the changes
   fs.writeFileSync(filePath, modifiedContent, "utf8");
 
   await git.add(repo.filePath);
 
-  await git.commit(
-    `chore: update using UbiquityOS Configurations Agent
-
-  ${instruction}
-      `
-  );
+  await git.commit(["chore: update using UbiquityOS Configurations Agent", instruction].join("\n\n"));
 
   try {
     if (isInteractive) {
       await git.push("origin", defaultBranch);
       console.log(`Changes pushed to ${repo.url} in branch ${defaultBranch}`);
     } else {
+      const branchName = `sync-configs-${Date.now()}`;
+      await git.checkoutLocalBranch(branchName);
       await git.push("origin", branchName, ["--set-upstream"]);
       await createPullRequest({ repo, branchName, defaultBranch, instruction });
       console.log(`Pull request created for ${repo.url} from branch ${branchName} to ${defaultBranch}`);
