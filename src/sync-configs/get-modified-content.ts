@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { fetchManifests } from "./fetch-manifests";
+import { parsePluginUrls } from "./parse-plugin-urls";
 import { renderPrompt } from "./render-prompt";
-
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 if (!ANTHROPIC_API_KEY) {
@@ -9,7 +10,9 @@ if (!ANTHROPIC_API_KEY) {
 }
 
 export async function getModifiedContent(originalContent: string, instruction: string, parserCode: string): Promise<string> {
-  const prompt = renderPrompt(originalContent, parserCode);
+  const pluginUrls = parsePluginUrls(originalContent);
+  const manifests = await fetchManifests(pluginUrls);
+  const prompt = await renderPrompt(originalContent, parserCode, JSON.stringify(manifests));
 
   const anthropic = new Anthropic({
     apiKey: ANTHROPIC_API_KEY,
