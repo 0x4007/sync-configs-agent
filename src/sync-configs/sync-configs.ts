@@ -13,7 +13,12 @@ export const REPOS_DIR = "../organizations";
 
 export async function syncConfigsAgent() {
   const args = process.argv.slice(2);
-  const isInteractive = process.env.INTERACTIVE === "true";
+  const shouldPush = args.includes("--push");
+
+  if (shouldPush) {
+    await pushModifiedContents();
+    return;
+  }
 
   const reposPath = path.resolve(__dirname, REPOS_DIR);
   if (!fs.existsSync(reposPath)) {
@@ -27,14 +32,9 @@ export async function syncConfigsAgent() {
 
   await Promise.all(clonePromises);
 
-  if (isInteractive) {
+  if (process.env.INTERACTIVE === "true") {
     await syncConfigsInteractive();
   } else {
     await syncConfigsNonInteractive();
-  }
-
-  // Push changes unless it's non-interactive mode
-  if (isInteractive || args.includes("--push")) {
-    await pushModifiedContents();
   }
 }
