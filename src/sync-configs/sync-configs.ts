@@ -36,5 +36,7 @@ export async function syncConfigsAgent() {
     await syncConfigsInteractive();
   } else if (process.env.INTERACTIVE === "false") {
     await syncConfigsNonInteractive();
+  } else {
+    throw new Error("Invalid value for INTERACTIVE environment variable.");
   }
 }
