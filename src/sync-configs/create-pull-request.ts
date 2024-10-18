@@ -14,7 +14,7 @@ export async function createPullRequest({
   const octokit = new Octokit({ auth: process.env.GITHUB_APP_TOKEN });
 
   // Extract owner and repo from the target URL
-  const [, owner, repo] = target.url.match(/github\.com\/([^/]+)\/([^/]+)/) || [];
+  const [, owner, repo] = target.url.match(/github\.com\/([^/]+)\/([^/.]+)/) || [];
 
   if (!owner || !repo) {
     throw new Error(`Invalid GitHub URL: ${target.url}`);
