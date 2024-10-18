@@ -27,9 +27,18 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Generate GitHub App token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Run start script
         run: bun run start ${{ github.event.inputs.target_repo }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           EDITOR_INSTRUCTION: ${{ github.event.inputs.editor_instruction }}
           INTERACTIVE: "false"
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_APP_TOKEN: ${{ steps.generate_token.outputs.token }}

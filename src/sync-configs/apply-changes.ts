@@ -33,6 +33,24 @@ export async function applyChanges({
     stderr.pipe(process.stderr);
   });
 
+  // Check for global Git config
+  const globalUserName = await git.getConfig("user.name", "global");
+  const globalUserEmail = await git.getConfig("user.email", "global");
+
+  let isBot = false;
+  if (!globalUserName.value || !globalUserEmail.value) {
+    // If global config is not set, use the bot credentials
+    const userName = "UbiquityOS Configurations Agent[bot]";
+    const userEmail = "ubiquity-os[bot]@users.noreply.github.com";
+
+    await git.addConfig("user.name", userName, false, "local");
+    await git.addConfig("user.email", userEmail, false, "local");
+    console.log("Using bot credentials for Git operations.");
+    isBot = true;
+  } else {
+    console.log("Using global Git config for operations.");
+  }
+
   const defaultBranch = forceBranch || (await getDefaultBranch(target.url));
 
   await git.checkout(defaultBranch);
@@ -42,16 +60,29 @@ export async function applyChanges({
 
   await git.add(target.filePath);
 
-  await git.commit(["chore: update using UbiquityOS Configurations Agent", instruction].join("\n\n"));
+  let commitMessage: string;
+  if (isBot && process.env.GITHUB_ACTOR) {
+    commitMessage = ["chore: update", instruction, `Triggered by @${process.env.GITHUB_ACTOR}`].join("\n\n");
+  } else {
+    commitMessage = ["chore: update using UbiquityOS Configurations Agent", instruction].join("\n\n");
+  }
+
+  await git.commit(commitMessage);
 
   try {
     if (isInteractive) {
-      await git.push("origin", defaultBranch);
+      await git.push("origin", defaultBranch, {
+        "--force-with-lease": null,
+        ...(process.env.GITHUB_APP_TOKEN ? { "-o": `oauth_token=${process.env.GITHUB_APP_TOKEN}` } : {}),
+      });
       console.log(`Changes pushed to ${target.url} in branch ${defaultBranch}`);
     } else {
       const branchName = `sync-configs-${Date.now()}`;
       await git.checkoutLocalBranch(branchName);
-      await git.push("origin", branchName, ["--set-upstream"]);
+      await git.push("origin", branchName, {
+        "-u": null,
+        ...(process.env.GITHUB_APP_TOKEN ? { "-o": `oauth_token=${process.env.GITHUB_APP_TOKEN}` } : {}),
+      });
       await createPullRequest({ target, branchName, defaultBranch, instruction });
       console.log(`Pull request created for ${target.url} from branch ${branchName} to ${defaultBranch}`);
     }
