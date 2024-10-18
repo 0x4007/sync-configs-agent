@@ -15,7 +15,6 @@ export async function cloneOrPullRepo(target: Target, defaultBranch: string): Pr
       try {
         await git.fetch("origin");
         await git.reset(["--hard", `origin/${defaultBranch}`]);
-        // await git.clean(["-f", "-d"]);
       } catch (error) {
         console.error(`Error updating ${target.url}:`, error);
         throw error;

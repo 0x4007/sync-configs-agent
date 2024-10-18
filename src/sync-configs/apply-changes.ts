@@ -52,7 +52,7 @@ export async function applyChanges({
       const branchName = `sync-configs-${Date.now()}`;
       await git.checkoutLocalBranch(branchName);
       await git.push("origin", branchName, ["--set-upstream"]);
-      await createPullRequest({ repo: target, branchName, defaultBranch, instruction });
+      await createPullRequest({ target, branchName, defaultBranch, instruction });
       console.log(`Pull request created for ${target.url} from branch ${branchName} to ${defaultBranch}`);
     }
   } catch (error) {
