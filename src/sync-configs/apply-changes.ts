@@ -70,19 +70,24 @@ export async function applyChanges({
   await git.commit(commitMessage);
 
   try {
+    const token = process.env.GITHUB_APP_TOKEN;
+    if (!token) {
+      throw new Error("GITHUB_APP_TOKEN is not set");
+    }
+
+    // Extract the repo URL without the protocol
+    const repoUrlWithoutProtocol = target.url.replace(/^https?:\/\//, "");
+
+    // Construct the authenticated remote URL
+    const authenticatedRemoteUrl = `https://x-access-token:${token}@${repoUrlWithoutProtocol}`;
+
     if (isInteractive) {
-      await git.push("origin", defaultBranch, {
-        "--force-with-lease": null,
-        ...(process.env.GITHUB_APP_TOKEN ? { "-o": `oauth_token=${process.env.GITHUB_APP_TOKEN}` } : {}),
-      });
+      await git.push(authenticatedRemoteUrl, defaultBranch, ["--force-with-lease"]);
       console.log(`Changes pushed to ${target.url} in branch ${defaultBranch}`);
     } else {
       const branchName = `sync-configs-${Date.now()}`;
       await git.checkoutLocalBranch(branchName);
-      await git.push("origin", branchName, {
-        "-u": null,
-        ...(process.env.GITHUB_APP_TOKEN ? { "-o": `oauth_token=${process.env.GITHUB_APP_TOKEN}` } : {}),
-      });
+      await git.push(authenticatedRemoteUrl, branchName, ["-u"]);
       await createPullRequest({ target, branchName, defaultBranch, instruction });
       console.log(`Pull request created for ${target.url} from branch ${branchName} to ${defaultBranch}`);
     }
