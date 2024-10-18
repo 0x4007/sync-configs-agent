@@ -33,6 +33,22 @@ export async function applyChanges({
     stderr.pipe(process.stderr);
   });
 
+  // Check for global Git config
+  const globalUserName = await git.getConfig("user.name", "global");
+  const globalUserEmail = await git.getConfig("user.email", "global");
+
+  if (!globalUserName.value || !globalUserEmail.value) {
+    // If global config is not set, use the bot credentials
+    const userName = "UbiquityOS Configurations Agent[bot]";
+    const userEmail = "ubiquity-os[bot]@users.noreply.github.com";
+
+    await git.addConfig("user.name", userName, false, "local");
+    await git.addConfig("user.email", userEmail, false, "local");
+    console.log("Using bot credentials for Git operations.");
+  } else {
+    console.log("Using global Git config for operations.");
+  }
+
   const isGitHubActions = !!process.env.GITHUB_ACTIONS;
 
   const defaultBranch = forceBranch || (await getDefaultBranch(target.url));
