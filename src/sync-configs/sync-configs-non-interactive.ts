@@ -7,5 +7,5 @@ export async function syncConfigsNonInteractive() {
       "No instruction provided. You need to pass in an instruction either as command-line arguments or through the EDITOR_INSTRUCTION environment variable."
     );
   }
-  await processRepositories(instruction, true);
+  await processRepositories(instruction, false);
 }
