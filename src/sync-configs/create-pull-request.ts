@@ -1,19 +1,19 @@
 import { Octokit } from "@octokit/rest";
-import { Repo } from "./sync-configs";
+import { Target } from "./targets";
 
 export async function createPullRequest({
-  repo,
+  target,
   branchName,
   defaultBranch,
   instruction,
 }: {
-  repo: Repo;
+  target: Target;
   branchName: string;
   defaultBranch: string;
   instruction: string;
 }) {
   const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-  const [owner, repoName] = repo.url.split("/").slice(-2);
+  const [owner, repoName] = target.url.split("/").slice(-2);
 
   const cleanRepoName = repoName.replace(/\.git$/, "");
 

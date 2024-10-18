@@ -3,13 +3,11 @@ import * as path from "path";
 import { cloneOrPullRepo } from "./clone-or-pull-repo";
 import { getDefaultBranch } from "./get-default-branch";
 import { pushModifiedContents } from "./push-modified-contents";
-import { repositories } from "./repositories";
 import { syncConfigsInteractive } from "./sync-configs-interactive";
 import { syncConfigsNonInteractive } from "./sync-configs-non-interactive";
+import { targets } from "./targets";
 
-export type Repo = (typeof repositories)[number];
-
-export const REPOS_DIR = "../organizations";
+export const STORAGE_DIR = "../fixtures";
 
 export async function syncConfigsAgent() {
   const args = process.argv.slice(2);
@@ -20,12 +18,12 @@ export async function syncConfigsAgent() {
     return;
   }
 
-  const reposPath = path.resolve(__dirname, REPOS_DIR);
+  const reposPath = path.resolve(__dirname, STORAGE_DIR);
   if (!fs.existsSync(reposPath)) {
     fs.mkdirSync(reposPath, { recursive: true });
   }
 
-  const clonePromises = repositories.map(async (repo) => {
+  const clonePromises = targets.map(async (repo) => {
     const defaultBranch = await getDefaultBranch(repo.url);
     return cloneOrPullRepo(repo, defaultBranch);
   });
@@ -36,5 +34,7 @@ export async function syncConfigsAgent() {
     await syncConfigsInteractive();
   } else if (process.env.INTERACTIVE === "false") {
     await syncConfigsNonInteractive();
+  } else {
+    throw new Error("Invalid value for INTERACTIVE environment variable.");
   }
 }

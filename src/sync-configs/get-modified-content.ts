@@ -9,10 +9,10 @@ if (!ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-export async function getModifiedContent(originalContent: string, instruction: string, parserCode: string): Promise<string> {
+export async function getModifiedContent(originalContent: string, instruction: string, parserCode: string, repoUrl: string): Promise<string> {
   const pluginUrls = parsePluginUrls(originalContent);
   const manifests = await fetchManifests(pluginUrls);
-  const prompt = await renderPrompt(originalContent, parserCode, JSON.stringify(manifests));
+  const prompt = await renderPrompt(originalContent, parserCode, JSON.stringify(manifests), repoUrl);
 
   const anthropic = new Anthropic({
     apiKey: ANTHROPIC_API_KEY,
