@@ -113,6 +113,8 @@ async function pushToLocalDevelopment(git: SimpleGit, target: Target, branchName
 }
 
 async function createAndLogPullRequest(target: Target, branchName: string, defaultBranch: string, instruction: string) {
+  console.log({ target, branchName, defaultBranch });
+  console.log(`Creating PR for target URL: ${target.url}`);
   try {
     const prUrl = await createPullRequest({ target, branchName, defaultBranch, instruction });
     console.log(`Pull request created: ${prUrl}`);

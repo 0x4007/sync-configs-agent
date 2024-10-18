@@ -20,6 +20,9 @@ export async function createPullRequest({
     throw new Error(`Invalid GitHub URL: ${target.url}`);
   }
 
+  console.log(`Attempting to create PR for owner: ${owner}, repo: ${repo}`);
+  console.log(`Branch: ${branchName}, Base: ${defaultBranch}`);
+
   try {
     const response = await octokit.pulls.create({
       owner,
@@ -34,6 +37,12 @@ export async function createPullRequest({
     return response.data.html_url;
   } catch (error) {
     console.error("Error creating pull request:", error);
+    console.error("Request details:", {
+      owner,
+      repo,
+      head: branchName,
+      base: defaultBranch,
+    });
     if (error.response) {
       console.error("Response status:", error.response.status);
       console.error("Response data:", error.response.data);
