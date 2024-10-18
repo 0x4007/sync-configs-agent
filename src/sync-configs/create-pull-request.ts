@@ -1,5 +1,4 @@
 import { Octokit } from "@octokit/rest";
-import { Target } from "./targets";
 
 export async function createPullRequest({
   target,
@@ -7,35 +6,38 @@ export async function createPullRequest({
   defaultBranch,
   instruction,
 }: {
-  target: Target;
+  target: { url: string };
   branchName: string;
   defaultBranch: string;
   instruction: string;
 }) {
-  const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-  const [owner, repoName] = target.url.split("/").slice(-2);
+  const octokit = new Octokit({ auth: process.env.GITHUB_APP_TOKEN });
 
-  const cleanRepoName = repoName.replace(/\.git$/, "");
+  // Extract owner and repo from the target URL
+  const [, owner, repo] = target.url.match(/github\.com\/([^/]+)\/([^/]+)/) || [];
+
+  if (!owner || !repo) {
+    throw new Error(`Invalid GitHub URL: ${target.url}`);
+  }
 
   try {
-    const { data: pullRequest } = await octokit.pulls.create({
+    const response = await octokit.pulls.create({
       owner,
-      repo: cleanRepoName,
-      title: `Sync configs: ${instruction}`,
+      repo,
+      title: `Update configuration: ${instruction.split("\n")[0]}`,
       head: branchName,
       base: defaultBranch,
-      body: `> [!NOTE]
-> This pull request was automatically created by the @UbiquityOS Sync Configurations Agent.
->
-> ${instruction}`,
+      body: `This pull request updates the configuration based on the following instruction:\n\n${instruction}`,
     });
 
-    console.log(`Pull request created: ${pullRequest.html_url}`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Failed to create pull request: ${error.message}`);
-    } else {
-      console.error("Failed to create pull request: Unknown error");
+    console.log(`Pull request created: ${response.data.html_url}`);
+    return response.data.html_url;
+  } catch (error) {
+    console.error("Error creating pull request:", error);
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
     }
+    throw error;
   }
 }
