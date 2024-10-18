@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { Target } from "./targets";
 
 export async function createPullRequest({
   target,
@@ -6,27 +7,20 @@ export async function createPullRequest({
   defaultBranch,
   instruction,
 }: {
-  target: { url: string };
+  target: Target;
   branchName: string;
   defaultBranch: string;
   instruction: string;
 }) {
   const octokit = new Octokit({ auth: process.env.GITHUB_APP_TOKEN });
 
-  // Extract owner and repo from the target URL
-  const [, owner, repo] = target.url.match(/github\.com\/([^/]+)\/([^/.]+)/) || [];
-
-  if (!owner || !repo) {
-    throw new Error(`Invalid GitHub URL: ${target.url}`);
-  }
-
-  console.log(`Attempting to create PR for owner: ${owner}, repo: ${repo}`);
+  console.log(`Attempting to create PR for owner: ${target.owner}, repo: ${target.repo}`);
   console.log(`Branch: ${branchName}, Base: ${defaultBranch}`);
 
   try {
     const response = await octokit.pulls.create({
-      owner,
-      repo,
+      owner: target.owner,
+      repo: target.repo,
       title: `Update configuration: ${instruction.split("\n")[0]}`,
       head: branchName,
       base: defaultBranch,
@@ -38,8 +32,8 @@ export async function createPullRequest({
   } catch (error) {
     console.error("Error creating pull request:", error);
     console.error("Request details:", {
-      owner,
-      repo,
+      owner: target.owner,
+      repo: target.repo,
       head: branchName,
       base: defaultBranch,
     });
@@ -47,6 +41,7 @@ export async function createPullRequest({
       console.error("Response status:", error.response.status);
       console.error("Response data:", error.response.data);
     }
-    throw error;
+    console.warn("You may need to create the pull request manually.");
+    return null;
   }
 }
