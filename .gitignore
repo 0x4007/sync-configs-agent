@@ -10,5 +10,5 @@ node_modules
 static/dist
 coverage
 junit.xml
-src/organizations/
+src/fixtures/
 .swp

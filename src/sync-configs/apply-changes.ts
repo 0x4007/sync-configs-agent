@@ -1,19 +1,20 @@
+import * as fs from "fs";
 import path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
 import { createPullRequest } from "./create-pull-request";
 import { getDefaultBranch } from "./get-default-branch";
-import { Repo, REPOS_DIR } from "./sync-configs";
-import * as fs from "fs";
+import { STORAGE_DIR } from "./sync-configs";
+import { Target } from "./targets";
 
 export async function applyChanges({
-  repo,
+  target,
   filePath,
   modifiedContent,
   instruction,
   isInteractive,
   forceBranch,
 }: {
-  repo: Repo;
+  target: Target;
   filePath: string;
   modifiedContent: string;
   instruction: string;
@@ -21,7 +22,7 @@ export async function applyChanges({
   forceBranch?: string;
 }) {
   const git: SimpleGit = simpleGit({
-    baseDir: path.join(__dirname, REPOS_DIR, repo.localDir),
+    baseDir: path.join(__dirname, STORAGE_DIR, target.localDir),
     binary: "git",
     maxConcurrentProcesses: 6,
     trimmed: false,
@@ -32,29 +33,29 @@ export async function applyChanges({
     stderr.pipe(process.stderr);
   });
 
-  const defaultBranch = forceBranch || (await getDefaultBranch(repo.url));
+  const defaultBranch = forceBranch || (await getDefaultBranch(target.url));
 
   await git.checkout(defaultBranch);
   await git.pull("origin", defaultBranch);
 
   fs.writeFileSync(filePath, modifiedContent, "utf8");
 
-  await git.add(repo.filePath);
+  await git.add(target.filePath);
 
   await git.commit(["chore: update using UbiquityOS Configurations Agent", instruction].join("\n\n"));
 
   try {
     if (isInteractive) {
       await git.push("origin", defaultBranch);
-      console.log(`Changes pushed to ${repo.url} in branch ${defaultBranch}`);
+      console.log(`Changes pushed to ${target.url} in branch ${defaultBranch}`);
     } else {
       const branchName = `sync-configs-${Date.now()}`;
       await git.checkoutLocalBranch(branchName);
       await git.push("origin", branchName, ["--set-upstream"]);
-      await createPullRequest({ repo, branchName, defaultBranch, instruction });
-      console.log(`Pull request created for ${repo.url} from branch ${branchName} to ${defaultBranch}`);
+      await createPullRequest({ repo: target, branchName, defaultBranch, instruction });
+      console.log(`Pull request created for ${target.url} from branch ${branchName} to ${defaultBranch}`);
     }
   } catch (error) {
-    console.error(`Error applying changes to ${repo.url}:`, error);
+    console.error(`Error applying changes to ${target.url}:`, error);
   }
 }

@@ -1,6 +1,7 @@
 const CONFIG_FILE_PATH = ".github/.ubiquity-os.config.yml";
 
-export const repositories = [
+export type Target = (typeof targets)[number];
+export const targets = [
   {
     // https://github.com/ubiquity-os/ubiquity-os-kernel/blob/development/src/github/types/plugin-configuration.ts
     type: "parser",

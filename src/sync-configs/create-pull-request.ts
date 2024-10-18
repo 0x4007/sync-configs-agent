@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import { Repo } from "./sync-configs";
+import { Target } from "./sync-configs";
 
 export async function createPullRequest({
   repo,
@@ -7,7 +7,7 @@ export async function createPullRequest({
   defaultBranch,
   instruction,
 }: {
-  repo: Repo;
+  repo: Target;
   branchName: string;
   defaultBranch: string;
   instruction: string;
