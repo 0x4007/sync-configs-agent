@@ -8,9 +8,9 @@ import { syncConfigsNonInteractive } from "./sync-configs-non-interactive";
 import { targets } from "./targets";
 
 export const STORAGE_DIR = "../fixtures";
-export const argv = process.argv.slice(2);
 
 export async function syncConfigsAgent() {
+  const argv = process.argv.slice(2);
   const shouldPush = argv.includes("--push");
 
   if (shouldPush) {
