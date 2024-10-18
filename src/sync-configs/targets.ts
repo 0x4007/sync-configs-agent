@@ -1,3 +1,4 @@
+import * as path from "path";
 const CONFIG_FILE_PATH = ".github/.ubiquity-os.config.yml";
 
 const parserTarget = {
@@ -22,15 +23,23 @@ if (userArgs.length > 0) {
 }
 
 // Always include the parser target
-targetUrls.push(parserTarget);
+targetUrls.unshift(parserTarget);
 
 export const targets: Target[] = targetUrls.map(({ type, url }) => {
-  const [, , repo] = url.match(/github\.com\/([^/]+)\/([^/]+)/) || [];
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)(\.git)?$/);
+  if (!match) {
+    throw new Error(`Invalid GitHub URL: ${url}`);
+  }
+
+  const owner = match[1];
+  const repo = match[2].replace(".git", "");
   const isKernel = type === "parser";
 
   return {
     type,
-    localDir: repo.replace(".git", ""),
+    owner,
+    repo,
+    localDir: path.join(owner, repo),
     url,
     filePath: isKernel ? "src/github/types/plugin-configuration.ts" : CONFIG_FILE_PATH,
   };
@@ -38,6 +47,8 @@ export const targets: Target[] = targetUrls.map(({ type, url }) => {
 
 export type Target = {
   type: string;
+  owner: string;
+  repo: string;
   localDir: string;
   url: string;
   filePath: string;

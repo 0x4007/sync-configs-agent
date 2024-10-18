@@ -5,7 +5,9 @@ type PluginLocation = string | { owner: string; repo: string; ref?: string };
 export function parsePluginUrls(yamlContent: string): PluginLocation[] {
   const parsedYaml = yaml.load(yamlContent) as { plugins?: unknown[] };
   const plugins = parsedYaml.plugins || [];
-
+  if (!plugins.length) {
+    console.error("parsedYaml.plugins not found in the YAML content", parsedYaml);
+  }
   return plugins.flatMap((plugin) => parsePlugin(plugin));
 }
 

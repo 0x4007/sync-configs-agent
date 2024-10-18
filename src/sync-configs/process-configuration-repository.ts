@@ -1,14 +1,14 @@
 import * as fs from "fs";
-import path from "path";
 import { applyChanges } from "./apply-changes";
 import { confirmChanges } from "./confirm-changes";
 import { getDiff } from "./get-diff";
 import { getModifiedContent } from "./get-modified-content";
-import { STORAGE_DIR } from "./sync-configs";
 import { Target } from "./targets";
+import * as path from "path";
 
 export async function processConfigurationRepository(target: Target, instruction: string, parserCode: string, isInteractive: boolean) {
-  const filePath = path.join(__dirname, STORAGE_DIR, target.localDir, target.filePath);
+  const filePath = path.resolve("src", "fixtures", target.localDir, target.filePath);
+
   if (!fs.existsSync(filePath)) {
     console.log(`Skipping ${target.url} as the file ${target.filePath} does not exist.`);
     return;
