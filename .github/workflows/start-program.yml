@@ -3,8 +3,8 @@ name: Start Program
 on:
   workflow_dispatch:
     inputs:
-      input_string:
-        description: "Input string to pass to the program"
+      editor_instruction:
+        description: "Provide instructions for editing the YAML configuration. More detailed and specific instructions will yield better results."
         required: true
         type: string
       target_repo:
@@ -32,5 +32,5 @@ jobs:
         run: npm start ${{ github.event.inputs.target_repo }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          INPUT_STRING: ${{ github.event.inputs.input_string }}
+          EDITOR_INSTRUCTION: ${{ github.event.inputs.editor_instruction }}
           INTERACTIVE: "false"
