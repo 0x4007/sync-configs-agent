@@ -1,4 +1,5 @@
 import * as path from "path";
+import { argv } from "./sync-configs";
 const CONFIG_FILE_PATH = ".github/.ubiquity-os.config.yml";
 
 const parserTarget = {
@@ -6,13 +7,11 @@ const parserTarget = {
   url: "https://github.com/ubiquity-os/ubiquity-os-kernel.git",
 };
 
-const userArgs = process.argv.slice(2);
-
 let targetUrls;
 
-if (userArgs.length > 0) {
+if (argv.length > 0) {
   // User has provided URLs via CLI arguments
-  targetUrls = userArgs.map((url) => ({ type: "config", url }));
+  targetUrls = argv.map((url) => ({ type: "config", url }));
 } else {
   // Use default configs
   targetUrls = [
