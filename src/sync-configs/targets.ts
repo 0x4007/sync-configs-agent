@@ -1,42 +1,44 @@
 const CONFIG_FILE_PATH = ".github/.ubiquity-os.config.yml";
 
-export type Target = (typeof targets)[number];
-export const targets = [
-  {
-    // https://github.com/ubiquity-os/ubiquity-os-kernel/blob/development/src/github/types/plugin-configuration.ts
-    type: "parser",
-    localDir: "ubiquity-os-kernel",
-    url: "https://github.com/ubiquity-os/ubiquity-os-kernel.git",
-    filePath: "src/github/types/plugin-configuration.ts",
-  },
-  {
-    type: "config",
-    localDir: "ubiquity",
-    url: "https://github.com/ubiquity/ubiquity-os.config.git",
-    filePath: CONFIG_FILE_PATH,
-  },
-  // {
-  //   type: "config",
-  //   localDir: "ubiquity-pay-ubq-fi",
-  //   url: "https://github.com/ubiquity/pay.ubq.fi.git",
-  //   filePath: CONFIG_FILE_PATH,
-  // },
-  // {
-  //   type: "config",
-  //   localDir: "ubiquity-work-ubq-fi",
-  //   url: "https://github.com/ubiquity/work.ubq.fi.git",
-  //   filePath: CONFIG_FILE_PATH,
-  // },
-  {
-    type: "config",
-    localDir: "ubiquity-os",
-    url: "https://github.com/ubiquity-os/ubiquity-os.config.git",
-    filePath: CONFIG_FILE_PATH,
-  },
-  {
-    type: "config",
-    localDir: "ubiquity-os-marketplace",
-    url: "https://github.com/ubiquity-os-marketplace/ubiquity-os.config.git",
-    filePath: CONFIG_FILE_PATH,
-  },
-];
+const parserTarget = {
+  type: "parser",
+  url: "https://github.com/ubiquity-os/ubiquity-os-kernel.git",
+};
+
+const userArgs = process.argv.slice(2);
+
+let targetUrls;
+
+if (userArgs.length > 0) {
+  // User has provided URLs via CLI arguments
+  targetUrls = userArgs.map((url) => ({ type: "config", url }));
+} else {
+  // Use default configs
+  targetUrls = [
+    { type: "config", url: "https://github.com/ubiquity/ubiquity-os.config.git" },
+    { type: "config", url: "https://github.com/ubiquity-os/ubiquity-os.config.git" },
+    { type: "config", url: "https://github.com/ubiquity-os-marketplace/ubiquity-os.config.git" },
+  ];
+}
+
+// Always include the parser target
+targetUrls.push(parserTarget);
+
+export const targets: Target[] = targetUrls.map(({ type, url }) => {
+  const [, , repo] = url.match(/github\.com\/([^/]+)\/([^/]+)/) || [];
+  const isKernel = type === "parser";
+
+  return {
+    type,
+    localDir: repo.replace(".git", ""),
+    url,
+    filePath: isKernel ? "src/github/types/plugin-configuration.ts" : CONFIG_FILE_PATH,
+  };
+});
+
+export type Target = {
+  type: string;
+  localDir: string;
+  url: string;
+  filePath: string;
+};
