@@ -14,7 +14,7 @@ export async function processRepository(repo: Repo, instruction: string, parserC
   }
   const fileContent = fs.readFileSync(filePath, "utf8");
 
-  const modifiedContent = await getModifiedContent(fileContent, instruction, parserCode);
+  const modifiedContent = await getModifiedContent(fileContent, instruction, parserCode, repo.url);
 
   const tempFilePath = `${filePath}.modified`;
   fs.writeFileSync(tempFilePath, modifiedContent, "utf8");

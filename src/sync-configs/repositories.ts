@@ -1,4 +1,4 @@
-const CONFIG_FILE_PATH = ".github/.ubiquibot-config.yml";
+const CONFIG_FILE_PATH = ".github/.ubiquity-os.config.yml";
 
 export const repositories = [
   {
@@ -11,7 +11,7 @@ export const repositories = [
   {
     type: "config",
     localDir: "ubiquity",
-    url: "https://github.com/ubiquity/ubiquibot-config.git",
+    url: "https://github.com/ubiquity/ubiquity-os.config.git",
     filePath: CONFIG_FILE_PATH,
   },
   // {
@@ -29,13 +29,13 @@ export const repositories = [
   {
     type: "config",
     localDir: "ubiquity-os",
-    url: "https://github.com/ubiquity-os/ubiquibot-config.git",
+    url: "https://github.com/ubiquity-os/ubiquity-os.config.git",
     filePath: CONFIG_FILE_PATH,
   },
   {
     type: "config",
     localDir: "ubiquity-os-marketplace",
-    url: "https://github.com/ubiquity-os-marketplace/ubiquibot-config.git",
+    url: "https://github.com/ubiquity-os-marketplace/ubiquity-os.config.git",
     filePath: CONFIG_FILE_PATH,
   },
 ];
