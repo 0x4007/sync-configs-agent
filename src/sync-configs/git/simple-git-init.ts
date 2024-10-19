@@ -7,8 +7,5 @@ if (!token) {
 
 export async function getSimpleGit() {
   const git: SimpleGit = simpleGit();
-  await git.addConfig("user.name", "ubiquity-os[bot]");
-  await git.addConfig("user.email", "ubiquity-os[bot]@users.noreply.github.com");
-  await git.addConfig("http.extraheader", `AUTHORIZATION: bearer ${token}`);
   return git;
 }

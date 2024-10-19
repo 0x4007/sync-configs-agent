@@ -23,6 +23,17 @@ if (argv.length > 0) {
 // Always include the parser target
 targetUrls.unshift(parserTarget);
 
+function addAuthToUrl(url: string): string {
+  const USER = "ubiquity-os[bot]";
+  const PASS = process.env.GITHUB_APP_TOKEN;
+
+  if (!USER || !PASS) {
+    throw new Error("GITHUB_USERNAME or GITHUB_APP_TOKEN is not set");
+  }
+
+  return url.replace("https://", `https://${USER}:${PASS}@`);
+}
+
 export const targets: Target[] = targetUrls.map(({ type, url }) => {
   const match = url.match(/github\.com\/([^/]+)\/([^/]+)(\.git)?$/);
   if (!match) {
@@ -38,7 +49,7 @@ export const targets: Target[] = targetUrls.map(({ type, url }) => {
     owner,
     repo,
     localDir: path.join(owner, repo),
-    url,
+    url: addAuthToUrl(url),
     filePath: isKernel ? "src/github/types/plugin-configuration.ts" : CONFIG_FILE_PATH,
   };
 });
