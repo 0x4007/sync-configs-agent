@@ -3,9 +3,10 @@ import * as path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
 import { STORAGE_DIR } from "../sync-configs";
 import { Target } from "../targets";
-import { git } from "./simple-git-init";
+import { getSimpleGit } from "./simple-git-init";
 
 export async function cloneOrPullRepo(target: Target, defaultBranch: string): Promise<void> {
+  const git = await getSimpleGit();
   const repoPath = path.join(__dirname, STORAGE_DIR, target.localDir);
 
   if (fs.existsSync(repoPath)) {
