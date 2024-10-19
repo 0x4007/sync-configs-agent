@@ -1,8 +1,9 @@
-import * as path from "path";
 import * as fs from "fs";
+import * as path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
-import { STORAGE_DIR } from "./sync-configs";
-import { Target } from "./targets";
+import { STORAGE_DIR } from "../sync-configs";
+import { Target } from "../targets";
+import { git } from "./simple-git-init";
 
 export async function cloneOrPullRepo(target: Target, defaultBranch: string): Promise<void> {
   const repoPath = path.join(__dirname, STORAGE_DIR, target.localDir);
@@ -26,7 +27,6 @@ export async function cloneOrPullRepo(target: Target, defaultBranch: string): Pr
     // The directory does not exist; create it and perform git clone
     try {
       fs.mkdirSync(repoPath, { recursive: true });
-      const git: SimpleGit = simpleGit();
       await git.clone(target.url, repoPath);
     } catch (error) {
       console.error(`Error cloning ${target.url}:`, error);

@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import path from "path";
 import { applyChanges } from "./apply-changes";
-import { getDefaultBranch } from "./get-default-branch";
+import { getDefaultBranch } from "./git/get-default-branch";
 import { LAST_RUN_INSTRUCTION } from "./process-repositories";
 import { STORAGE_DIR } from "./sync-configs";
 import { targets } from "./targets";

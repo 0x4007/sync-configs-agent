@@ -2,7 +2,7 @@ import * as fs from "fs";
 import path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
 import { createPullRequest } from "./create-pull-request";
-import { getDefaultBranch } from "./get-default-branch";
+import { getDefaultBranch } from "./git/get-default-branch";
 import { STORAGE_DIR } from "./sync-configs";
 import { Target } from "./targets";
 

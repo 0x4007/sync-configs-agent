@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import { cloneOrPullRepo } from "./clone-or-pull-repo";
-import { getDefaultBranch } from "./get-default-branch";
+import { cloneOrPullRepo } from "./git/clone-or-pull-repo";
+import { getDefaultBranch } from "./git/get-default-branch";
 import { pushModifiedContents } from "./push-modified-contents";
 import { syncConfigsInteractive } from "./sync-configs-interactive";
 import { syncConfigsNonInteractive } from "./sync-configs-non-interactive";
