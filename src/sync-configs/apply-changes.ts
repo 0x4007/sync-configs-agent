@@ -62,7 +62,7 @@ export async function applyChanges({
 
   let commitMessage: string;
   if (isGitHubActions) {
-    commitMessage = ["chore: update", instruction, `Triggered by @${process.env.GITHUB_ACTOR}`].join("\n\n");
+    commitMessage = ["chore: update", instruction, `Requested by @${process.env.GITHUB_ACTOR}`].join("\n\n");
   } else {
     commitMessage = ["chore: update configuration using UbiquityOS Configurations Agent", instruction].join("\n\n");
   }
