@@ -33,6 +33,24 @@ export async function applyChanges({
     stderr.pipe(process.stderr);
   });
 
+  // Check for global Git config
+  const globalUserName = await git.getConfig("user.name", "global");
+  const globalUserEmail = await git.getConfig("user.email", "global");
+
+  if (!globalUserName.value || !globalUserEmail.value) {
+    // If global config is not set, use the bot credentials
+    const userName = "UbiquityOS Configurations Agent[bot]";
+    const userEmail = "ubiquity-os[bot]@users.noreply.github.com";
+
+    await git.addConfig("user.name", userName, false, "local");
+    await git.addConfig("user.email", userEmail, false, "local");
+    console.log("Using bot credentials for Git operations.");
+  } else {
+    console.log("Using global Git config for operations.");
+  }
+
+  const isGitHubActions = !!process.env.GITHUB_ACTIONS;
+
   const defaultBranch = forceBranch || (await getDefaultBranch(target.url));
 
   await git.checkout(defaultBranch);
@@ -42,20 +60,66 @@ export async function applyChanges({
 
   await git.add(target.filePath);
 
-  await git.commit(["chore: update using UbiquityOS Configurations Agent", instruction].join("\n\n"));
+  let commitMessage: string;
+  if (isGitHubActions) {
+    commitMessage = ["chore: update", instruction, `Requested by @${process.env.GITHUB_ACTOR}`].join("\n\n");
+  } else {
+    commitMessage = ["chore: update configuration using UbiquityOS Configurations Agent", instruction].join("\n\n");
+  }
+
+  await git.commit(commitMessage);
 
   try {
-    if (isInteractive) {
-      await git.push("origin", defaultBranch);
-      console.log(`Changes pushed to ${target.url} in branch ${defaultBranch}`);
+    const branchName = `sync-configs-${Date.now()}`;
+    const isGitHubActions = !!process.env.GITHUB_ACTIONS;
+
+    if (isGitHubActions) {
+      await pushToGitHubActions(git, target, branchName, isInteractive);
     } else {
-      const branchName = `sync-configs-${Date.now()}`;
-      await git.checkoutLocalBranch(branchName);
-      await git.push("origin", branchName, ["--set-upstream"]);
-      await createPullRequest({ target, branchName, defaultBranch, instruction });
-      console.log(`Pull request created for ${target.url} from branch ${branchName} to ${defaultBranch}`);
+      await pushToLocalDevelopment(git, target, branchName, defaultBranch, isInteractive);
+    }
+
+    if (!isInteractive) {
+      await createAndLogPullRequest(target, branchName, defaultBranch, instruction);
     }
   } catch (error) {
     console.error(`Error applying changes to ${target.url}:`, error);
+  }
+}
+
+async function pushToGitHubActions(git: SimpleGit, target: Target, branchName: string, isInteractive: boolean) {
+  const token = process.env.GITHUB_APP_TOKEN;
+  if (!token) {
+    throw new Error("GITHUB_APP_TOKEN is not set");
+  }
+
+  const repoUrlWithoutProtocol = target.url.replace(/^https?:\/\//, "");
+  const authenticatedRemoteUrl = `https://x-access-token:${token}@${repoUrlWithoutProtocol}`;
+
+  if (!isInteractive) {
+    await git.checkoutLocalBranch(branchName);
+    await git.push(authenticatedRemoteUrl, branchName, ["-u"]);
+  }
+}
+
+async function pushToLocalDevelopment(git: SimpleGit, target: Target, branchName: string, defaultBranch: string, isInteractive: boolean) {
+  if (isInteractive) {
+    await git.push("origin", defaultBranch);
+    console.log(`Changes pushed to ${target.url} in branch ${defaultBranch}`);
+  } else {
+    await git.checkoutLocalBranch(branchName);
+    await git.push("origin", branchName, ["-u"]);
+  }
+}
+
+async function createAndLogPullRequest(target: Target, branchName: string, defaultBranch: string, instruction: string) {
+  console.log({ target, branchName, defaultBranch });
+  console.log(`Creating PR for target URL: ${target.url}`);
+  try {
+    const prUrl = await createPullRequest({ target, branchName, defaultBranch, instruction });
+    console.log(`Pull request created: ${prUrl}`);
+  } catch (prError) {
+    console.error("Failed to create pull request:", prError.message);
+    console.log(`Branch '${branchName}' has been pushed. You may need to create the pull request manually.`);
   }
 }

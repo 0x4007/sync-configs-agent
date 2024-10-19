@@ -12,30 +12,40 @@ export async function createPullRequest({
   defaultBranch: string;
   instruction: string;
 }) {
-  const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-  const [owner, repoName] = target.url.split("/").slice(-2);
+  const octokit = new Octokit({ auth: process.env.GITHUB_APP_TOKEN });
 
-  const cleanRepoName = repoName.replace(/\.git$/, "");
+  console.log(`Attempting to create PR for owner: ${target.owner}, repo: ${target.repo}`);
+  console.log(`Branch: ${branchName}, Base: ${defaultBranch}`);
+
+  const configFileName = target.filePath.split("/").pop();
 
   try {
-    const { data: pullRequest } = await octokit.pulls.create({
-      owner,
-      repo: cleanRepoName,
-      title: `Sync configs: ${instruction}`,
+    const response = await octokit.pulls.create({
+      owner: target.owner,
+      repo: target.repo,
+      title: `chore: update \`${configFileName}\``,
       head: branchName,
       base: defaultBranch,
-      body: `> [!NOTE]
-> This pull request was automatically created by the @UbiquityOS Sync Configurations Agent.
->
+      body: `Requested by @${process.env.GITHUB_ACTOR}:
+
 > ${instruction}`,
     });
 
-    console.log(`Pull request created: ${pullRequest.html_url}`);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error(`Failed to create pull request: ${error.message}`);
-    } else {
-      console.error("Failed to create pull request: Unknown error");
+    console.log(`Pull request created: ${response.data.html_url}`);
+    return response.data.html_url;
+  } catch (error) {
+    console.error("Error creating pull request:", error);
+    console.error("Request details:", {
+      owner: target.owner,
+      repo: target.repo,
+      head: branchName,
+      base: defaultBranch,
+    });
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
     }
+    console.warn("You may need to create the pull request manually.");
+    return null;
   }
 }

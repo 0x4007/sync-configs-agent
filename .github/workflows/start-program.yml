@@ -3,9 +3,13 @@ name: Start Program
 on:
   workflow_dispatch:
     inputs:
-      input_string:
-        description: "Input string to pass to the program"
+      editor_instruction:
+        description: "Provide instructions for editing the YAML configuration. More detailed and specific instructions will yield better results."
         required: true
+        type: string
+      target_repo:
+        description: "URL of the git repository to target (optional)"
+        required: false
         type: string
 
 jobs:
@@ -15,18 +19,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: "20.10.0"
-          cache: "npm"
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm install
+        run: bun install
+
+      - name: Generate GitHub App token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Run start script
-        run: npm start "${{ github.event.inputs.input_string }}"
+        run: bun run start ${{ github.event.inputs.target_repo }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          INPUT_STRING: ${{ github.event.inputs.input_string }}
+          EDITOR_INSTRUCTION: ${{ github.event.inputs.editor_instruction }}
           INTERACTIVE: "false"
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_APP_TOKEN: ${{ steps.generate_token.outputs.token }}

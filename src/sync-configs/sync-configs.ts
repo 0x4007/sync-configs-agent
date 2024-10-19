@@ -10,8 +10,8 @@ import { targets } from "./targets";
 export const STORAGE_DIR = "../fixtures";
 
 export async function syncConfigsAgent() {
-  const args = process.argv.slice(2);
-  const shouldPush = args.includes("--push");
+  const argv = process.argv.slice(2);
+  const shouldPush = argv.includes("--push");
 
   if (shouldPush) {
     await pushModifiedContents();

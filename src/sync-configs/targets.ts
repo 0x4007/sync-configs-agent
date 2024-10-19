@@ -6,19 +6,17 @@ const parserTarget = {
   url: "https://github.com/ubiquity-os/ubiquity-os-kernel.git",
 };
 
-const userArgs = process.argv.slice(2);
-
 let targetUrls;
-
-if (userArgs.length > 0) {
+const argv = process.argv.slice(2);
+if (argv.length > 0) {
   // User has provided URLs via CLI arguments
-  targetUrls = userArgs.map((url) => ({ type: "config", url }));
+  targetUrls = argv.map((url) => ({ type: "config", url }));
 } else {
   // Use default configs
   targetUrls = [
-    { type: "config", url: "https://github.com/ubiquity/ubiquity-os.config.git" },
-    { type: "config", url: "https://github.com/ubiquity-os/ubiquity-os.config.git" },
-    { type: "config", url: "https://github.com/ubiquity-os-marketplace/ubiquity-os.config.git" },
+    { type: "config", url: "https://github.com/ubiquity/.ubiquity-os.git" },
+    { type: "config", url: "https://github.com/ubiquity-os/.ubiquity-os.git" },
+    { type: "config", url: "https://github.com/ubiquity-os-marketplace/.ubiquity-os.git" },
   ];
 }
 
